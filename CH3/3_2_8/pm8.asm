@@ -334,6 +334,85 @@ PagingDemo:
 	call	PSwitch
 	call 	SelectorFlatC:ProcPagingDemo
 	ret
+
+PagingDemoProc:
+OffsetPagingDemoProc	equ	PagingDemoProc - $$
+	mov	eax, LinearAddrDemo
+	call	eax
+	retf
+LenPagingDemoAll	equ	$ - PagingDemoProc
+
+foo:
+OffsetFoo	equ	foo - $$
+	mov	ah, 0Ch			; back in black, red in front
+	mov	al, 'F'
+	mov	[gs:((80*17+0)*2)], ax
+	mov	al, 'o'
+	mov	[gs:((80*17+1)*2)], ax
+	mov	[gs:((80*17+2)*2)], ax
+	ret
+LenFoo		equ	$ - foo
+
+bar:
+OffsetBar	equ	bar - $$
+	mov	ah, 0Ch			; back in black, red in front
+	mov	al, 'B'
+	mov	[gs:((80*18+0)*2)], ax
+	mov	al, 'a'
+	mov	[gs:((80*18+1)*2)], ax
+	mov	al, 'r'
+	mov	[gs:((80*17+2)*2)], ax
+	ret
+LenBar		equ	$ - bar
+
+PSwitch:
+	;init page dir entry
+	mov	ax, SelectorFlatRW
+	mov	es, ax
+	mov	edi, PageDirBase1
+	xor	eax, eax
+	mov	eax, PageTblBase1 | PG_P | PG_USU | PG_RWW
+	mov	ecx, [PageTableNumber]
+.1:
+	stosd
+	add	eax, 4096
+	loop	.1
+
+	;init all page table
+	mov	eax, [PageTableNumber]
+	mov	ebx, 1024
+	mul	ebx
+	mov	ecx, eax
+	mov	edi, PageTblBase1
+	xor	eax, eax
+	mov	eax, PG_P | PG_USU | PG_RWW
+.2:
+	stosd
+	add	eax, 4096
+	loop	.2
+
+	; assume memory > 8MB
+	mov	eax, LinearAddrDemo
+	shr	eax, 22
+	mov	ebx, 4096
+	mul	ebx
+	mov	ecx, eax
+	mov	eax, LinearAddrDemo
+	shr	eax, 12
+	and	eax, 03FFh
+	mov	ebx, 4
+	mul	ebx
+	add	eax, ecx
+	add	eax, PageTblBase1
+	mov	dword [es:eax], ProcBar | PG_P | PG_USU | PG_RWW
+
+	mov	eax, PageDirBase1
+	mov	cr3, eax
+	jmp	short .3
+.3:
+	nop
+
+	ret
 %include 	"lib.inc"	
 SegCode32Len	equ	$-LABEL_SEG_CODE32
 ;END of [SECTION .s32]
